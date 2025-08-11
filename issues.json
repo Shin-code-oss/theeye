@@ -1,0 +1,64 @@
+[
+  {
+    "id": "delivery-workers-safety",
+    "title": "Delivery workers’ safety",
+    "summary": "High injury and fatality rates among app-based delivery workers; need for enforceable protections and safe routing.",
+    "details": "Track policy changes, accident statistics, and commitments by platforms. Elevate firsthand accounts and union statements.",
+    "tags": [
+      "labor",
+      "safety",
+      "gig-economy"
+    ],
+    "status": "unresolved",
+    "priority": 5,
+    "region": "Global",
+    "updated": "2025-08-09",
+    "sources": [
+      {
+        "title": "Background explainer",
+        "url": "https://example.org/delivery-safety"
+      }
+    ]
+  },
+  {
+    "id": "air-quality-urban",
+    "title": "Urban air quality",
+    "summary": "Air pollution continues to harm public health, especially children and the elderly.",
+    "details": "Track PM2.5/PM10 policy targets, real-time monitors, and enforcement actions. Link to community groups.",
+    "tags": [
+      "environment",
+      "health"
+    ],
+    "status": "unresolved",
+    "priority": 4,
+    "region": "Global",
+    "updated": "2025-08-09",
+    "sources": [
+      {
+        "title": "WHO: Air pollution",
+        "url": "https://example.org/who-air"
+      }
+    ]
+  },
+  {
+    "id": "digital-divide",
+    "title": "Digital divide",
+    "summary": "Unequal access to broadband and devices leaves parts of society behind in education, work, and services.",
+    "details": "Track fiber coverage, affordability programs, and public Wi‑Fi. Encourage device donation drives.",
+    "tags": [
+      "equity",
+      "education",
+      "infrastructure"
+    ],
+    "status": "unresolved",
+    "priority": 3,
+    "region": "Global",
+    "updated": "2025-08-09",
+    "sources": [
+      {
+        "title": "National broadband plan",
+        "url": "https://example.org/broadband-plan"
+      }
+    ]
+  }
+]

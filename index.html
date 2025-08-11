@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Eye — Never Forget</title>
+  <meta name="description" content="The Eye keeps social issues in focus until they're resolved." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">◎</span>
+      <h1>THE EYE</h1>
+    </div>
+    <nav>
+      <a href="#" id="aboutLink">About</a>
+      <a href="#" id="submitLink" title="Suggest an issue (link this to a Google Form later)">Submit</a>
+      <a href="#" id="howToHelpLink">How to help</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h2>Never let it fade.</h2>
+      <p>The Eye keeps unresolved social issues in view — tracked, sourced, and easy to share.</p>
+    </section>
+
+    <section class="tools">
+      <label for="search" class="sr-only">Search issues</label>
+      <input id="search" type="search" placeholder="Search issues (title, summary, tags)" autocomplete="off" />
+
+      <div id="tags" class="tags" aria-label="Filter by tag"></div>
+      <div class="toggles">
+        <label><input type="checkbox" id="showFollowed" /> Show followed only</label>
+        <label class="sort">
+          Sort:
+          <select id="sortBy">
+            <option value="priority">Urgency (high→low)</option>
+            <option value="title">Title (A→Z)</option>
+            <option value="status">Status</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section id="list" class="list" aria-live="polite">
+      <!-- Cards rendered here -->
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> The Eye. Black &amp; white by design. Accessible by necessity.</p>
+  </footer>
+
+  <dialog id="issueDialog" class="dialog">
+    <button class="dialog-close" aria-label="Close" id="dialogClose">×</button>
+    <div id="dialogContent"></div>
+  </dialog>
+
+  <script src="script.js"></script>
+</body>
+</html>
