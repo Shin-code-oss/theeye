@@ -1,4 +1,6 @@
 /* THE EYE — MVP logic (client-only) */
+
+/* ---- DOM refs ---- */
 const listEl = document.getElementById('list');
 const searchEl = document.getElementById('search');
 const tagsEl = document.getElementById('tags');
@@ -7,25 +9,54 @@ const sortByEl = document.getElementById('sortBy');
 const dialogEl = document.getElementById('issueDialog');
 const dialogContentEl = document.getElementById('dialogContent');
 const dialogCloseEl = document.getElementById('dialogClose');
+const langSelect = document.getElementById('langSelect');
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
+/* ---- State ---- */
 let DATA = [];
 let activeTags = new Set();
 let followed = new Set(JSON.parse(localStorage.getItem('the-eye:followed') || '[]'));
 
-async function load(){
-  try{
-    const res = await fetch('issues.json', {cache:'no-store'});
-    DATA = await res.json();
-    renderTags();
-    render();
-  }catch(err){
-    console.error(err);
-    listEl.innerHTML = '<p style="color:#cfcfcf">Failed to load issues.json</p>';
-  }
+/* ---- Language selection & data load ---- */
+function getPreferredLang(){
+  const saved = localStorage.getItem('the-eye:lang');
+  if (saved && saved !== 'auto') return saved;
+
+  const nav = navigator.language || 'ko';
+  if (nav.startsWith('ko')) return 'ko';
+  if (nav.startsWith('ja')) return 'ja';
+  return 'en';
 }
 
+async function load(){
+  const uiLang = localStorage.getItem('the-eye:lang') || 'auto';
+  if (langSelect) langSelect.value = uiLang;
+
+  let lang = uiLang === 'auto' ? getPreferredLang() : uiLang;
+  let url = `issues.${lang}.json`;
+
+  try{
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error('not found');
+    DATA = await res.json();
+  }catch(e){
+    // 폴백: 한국어 원본
+    const res = await fetch('issues.ko.json', {cache:'no-store'});
+    DATA = await res.json();
+    lang = 'ko';
+  }
+
+  renderTags();
+  render();
+}
+
+langSelect?.addEventListener('change', ()=>{
+  localStorage.setItem('the-eye:lang', langSelect.value);
+  location.reload();
+});
+
+/* ---- Rendering ---- */
 function renderTags(){
   const all = new Set();
   DATA.forEach(i => (i.tags||[]).forEach(t => all.add(t)));
@@ -163,8 +194,10 @@ function escapeHTML(str=''){
 }
 function escapeAttr(str=''){ return escapeHTML(str).replace(/"/g, '&quot;'); }
 
+/* ---- Events ---- */
 searchEl.addEventListener('input', render);
 showFollowedEl.addEventListener('change', render);
 sortByEl.addEventListener('change', render);
 
+/* ---- Kickoff ---- */
 load();
