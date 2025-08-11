@@ -1,5 +1,8 @@
 name: Translate issues
 
+permissions:
+  contents: write
+
 on:
   push:
     paths:
@@ -13,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,17 +27,14 @@ jobs:
       - name: Run translator
         env:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
-        run: |
-          python tools/translate.py
+        run: python tools/translate.py
 
+      # ← 셸 스크립트 대신 검증된 자동 커밋 액션 사용
       - name: Commit translated files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add issues.en.json issues.ja.json || true
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: auto-translate issues"
-            git push
-          else
-            echo "No changes."
-          fi
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-translate issues"
+          file_pattern: |
+            issues.en.json
+            issues.ja.json
+          branch: ${{ github.ref_name }}
