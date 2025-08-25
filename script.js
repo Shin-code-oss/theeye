@@ -16,7 +16,6 @@ const staticDialog = document.getElementById('staticDialog');
 const staticContent = document.getElementById('staticContent');
 const staticClose = document.getElementById('staticClose');
 
-
 document.getElementById('year').textContent = new Date().getFullYear();
 
 /* ---- State ---- */
@@ -24,11 +23,10 @@ let DATA = [];
 let activeTags = new Set();
 let followed = new Set(JSON.parse(localStorage.getItem('the-eye:followed') || '[]'));
 
-/* ---- Language selection & data load ---- */
+/* ---- Language selection & helpers ---- */
 function getPreferredLang(){
   const saved = localStorage.getItem('the-eye:lang');
   if (saved && saved !== 'auto') return saved;
-
   const nav = navigator.language || 'ko';
   if (nav.startsWith('ko')) return 'ko';
   if (nav.startsWith('ja')) return 'ja';
@@ -36,33 +34,56 @@ function getPreferredLang(){
 }
 function normalizeLang(v){ return v === 'jp' ? 'ja' : v; }
 
+/* ---- URL <-> UI state sync (filters) ---- */
+function parseStateFromURL(){
+  const p = new URLSearchParams(location.search);
+  const q = p.get('q') || '';
+  const tags = (p.get('tags') || '').split(',').filter(Boolean);
+  const sort = p.get('sort') || 'priority';
+  const followedOnly = p.get('followed') === '1';
+
+  searchEl.value = q;
+  activeTags = new Set(tags);
+  sortByEl.value = sort;
+  showFollowedEl.checked = followedOnly;
+}
+function syncURL(){
+  const p = new URLSearchParams(location.search);
+  const tags = Array.from(activeTags);
+  if (searchEl.value) p.set('q', searchEl.value); else p.delete('q');
+  if (tags.length) p.set('tags', tags.join(',')); else p.delete('tags');
+  if (sortByEl.value !== 'priority') p.set('sort', sortByEl.value); else p.delete('sort');
+  if (showFollowedEl.checked) p.set('followed', '1'); else p.delete('followed');
+  history.replaceState(null, '', `${location.pathname}?${p.toString()}${location.hash}`);
+}
+
+/* ---- Data load ---- */
 async function load(){
-  // 기존: const uiLang = localStorage.getItem('the-eye:lang') || 'auto';
+  // 언어 결정 + 보정
   const uiLangRaw = localStorage.getItem('the-eye:lang') || 'auto';
-  const uiLang = normalizeLang(uiLangRaw);            // ← 'jp' → 'ja' 보정
-  if (uiLangRaw !== uiLang) {
-    localStorage.setItem('the-eye:lang', uiLang);     // ← 저장된 값도 정정
-  }
+  const uiLang = normalizeLang(uiLangRaw);
+  if (uiLangRaw !== uiLang) localStorage.setItem('the-eye:lang', uiLang);
   if (langSelect) langSelect.value = uiLang;
 
-  // 기존: let lang = uiLang === 'auto' ? getPreferredLang() : uiLang;
   let lang = uiLang === 'auto' ? getPreferredLang() : uiLang;
-  lang = normalizeLang(lang);                         // ← 로드 대상 언어도 보정
+  lang = normalizeLang(lang);
   let url = `issues.${lang}.json`;
 
   try{
-    const res = await fetch(url, {cache:'no-store'});
+    const res = await fetch(url, { cache:'no-store' });
     if(!res.ok) throw new Error('not found');
     DATA = await res.json();
   }catch(e){
-    const res = await fetch('issues.ko.json', {cache:'no-store'});
+    const res = await fetch('issues.ko.json', { cache:'no-store' });
     DATA = await res.json();
     lang = 'ko';
   }
 
-  renderTags();       // ← 데이터가 채워진 뒤 렌더
+  // URL의 필터 상태를 먼저 UI에 반영 → 렌더
+  parseStateFromURL();
+  renderTags();
   render();
-  openFromHashOnce(); // ← 여기서 해시 열기(데이터 준비 완료 시점)
+  openFromHashOnce(); // 해시(#id)로 진입 시 모달 자동 오픈
 }
 
 langSelect?.addEventListener('change', ()=>{
@@ -96,7 +117,6 @@ function matchQuery(issue, q){
   const hay = (issue.title + ' ' + (issue.summary||'') + ' ' + (issue.tags||[]).join(' ')).toLowerCase();
   return hay.includes(q.toLowerCase());
 }
-
 function matchTags(issue){
   if(activeTags.size === 0) return true;
   return (issue.tags||[]).some(t => activeTags.has(t));
@@ -121,6 +141,7 @@ function render(){
 
   listEl.innerHTML = items.map(toCardHTML).join('');
   attachCardEvents();
+  syncURL(); // 상태 → URL 반영
 }
 
 function toCardHTML(i){
@@ -160,7 +181,6 @@ function attachCardEvents(){
       toggleFollow(id, e.target);
     });
   });
-    // Copy link
   document.querySelectorAll('.card .copylink').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       const id = e.target.closest('.card').dataset.id;
@@ -179,6 +199,7 @@ function toggleFollow(id, btn){
   btn.textContent = followed.has(id) ? 'Following' : 'Follow';
 }
 
+/* ---- Issue modal (details) ---- */
 function openDialog(id){
   const i = DATA.find(x => x.id === id);
   if(!i) return;
@@ -202,7 +223,19 @@ function openDialog(id){
   dialogEl.showModal();
 }
 
+dialogCloseEl.addEventListener('click', ()=>{
+  dialogEl.close();
+  history.replaceState(null, '', location.pathname + location.search); // 해시 제거
+});
+dialogEl.addEventListener('click', (e)=>{
+  const rect = dialogEl.getBoundingClientRect();
+  const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+  if(!inside) dialogEl.close();
+});
+
+/* ---- Static modal (About / How to help) ---- */
 function openStatic(title, html){
+  if (!staticDialog || !staticContent) return;
   staticContent.innerHTML = `
     <h3 style="margin:0;padding:16px;border-bottom:1px solid var(--border)">${title}</h3>
     <div class="dialog-body">${html}</div>`;
@@ -214,55 +247,43 @@ staticDialog?.addEventListener('click', (e)=>{
   const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
   if(!inside) staticDialog.close();
 });
-
 aboutLink?.addEventListener('click', (e)=>{
   e.preventDefault();
   openStatic('About', `
-    <p><strong>The Eye</strong>는 해결되지 않은 사회 이슈를 흑백으로 계속 보여주는 프로젝트입니다.</p>
-    <p>검색/태그/팔로우/출처 공유로 문제를 잊지 않게 만듭니다.</p>
+    <p><strong>The Eye</strong>는 해결되지 않은 사회 이슈를 계속 보여주기 위한 흑백 웹사이트입니다.</p>
+    <p>검색·태그·팔로우·출처 공유로 이슈를 잊지 않게 만듭니다.</p>
   `);
 });
-
 howToHelpLink?.addEventListener('click', (e)=>{
   e.preventDefault();
   openStatic('How to help', `
     <ul>
-      <li><strong>제보하기:</strong> 상단 <em>Submit</em>으로 이슈를 보내주세요(출처 필수).</li>
+      <li><strong>제보하기:</strong> 상단 <em>Submit</em>으로 신뢰 가능한 출처와 함께 이슈를 보내주세요.</li>
       <li><strong>팔로우:</strong> 관심 이슈만 모아 보고 주기적으로 확인하세요.</li>
       <li><strong>연결하기:</strong> 관련 단체/자료/캠페인 링크를 함께 남겨 주세요.</li>
     </ul>
   `);
 });
 
-dialogCloseEl.addEventListener('click', ()=>{
-  dialogEl.close();
-  history.replaceState(null, '', location.pathname + location.search); // 해시 제거
-});
-
-dialogEl.addEventListener('click', (e)=>{
-  const rect = dialogEl.getBoundingClientRect();
-  const inDialog = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
-  if(!inDialog) dialogEl.close();
-});
-
+/* ---- Sharing helpers ---- */
 function shareURL(i){
   const url = typeof window !== 'undefined' ? window.location.href.split('#')[0] : '';
   const text = `Keep this in sight: ${i.title}`;
   return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
 }
-
 function escapeHTML(str=''){
   return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
 }
 function escapeAttr(str=''){ return escapeHTML(str).replace(/"/g, '&quot;'); }
+
+/* ---- Deep link via hash (#id) ---- */
 window.addEventListener('hashchange', ()=>{
   const id = location.hash.slice(1);
   if (id) openDialog(id);
 });
-
 function openFromHashOnce(){
   const id = location.hash.slice(1);
-  if (id) setTimeout(()=>openDialog(id), 0); // 데이터 로드 직후 열기
+  if (id) setTimeout(()=>openDialog(id), 0);
 }
 
 /* ---- Events ---- */
