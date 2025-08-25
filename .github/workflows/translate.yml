@@ -29,7 +29,6 @@ jobs:
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
         run: python tools/translate.py
 
-      # ← 셸 스크립트 대신 검증된 자동 커밋 액션 사용
       - name: Commit translated files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
