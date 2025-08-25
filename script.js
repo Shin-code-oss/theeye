@@ -10,6 +10,12 @@ const dialogEl = document.getElementById('issueDialog');
 const dialogContentEl = document.getElementById('dialogContent');
 const dialogCloseEl = document.getElementById('dialogClose');
 const langSelect = document.getElementById('langSelect');
+const aboutLink = document.getElementById('aboutLink');
+const howToHelpLink = document.getElementById('howToHelpLink');
+const staticDialog = document.getElementById('staticDialog');
+const staticContent = document.getElementById('staticContent');
+const staticClose = document.getElementById('staticClose');
+
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -195,6 +201,38 @@ function openDialog(id){
   `;
   dialogEl.showModal();
 }
+
+function openStatic(title, html){
+  staticContent.innerHTML = `
+    <h3 style="margin:0;padding:16px;border-bottom:1px solid var(--border)">${title}</h3>
+    <div class="dialog-body">${html}</div>`;
+  staticDialog.showModal();
+}
+staticClose?.addEventListener('click', ()=> staticDialog.close());
+staticDialog?.addEventListener('click', (e)=>{
+  const r = staticDialog.getBoundingClientRect();
+  const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+  if(!inside) staticDialog.close();
+});
+
+aboutLink?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  openStatic('About', `
+    <p><strong>The Eye</strong>는 해결되지 않은 사회 이슈를 흑백으로 계속 보여주는 프로젝트입니다.</p>
+    <p>검색/태그/팔로우/출처 공유로 문제를 잊지 않게 만듭니다.</p>
+  `);
+});
+
+howToHelpLink?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  openStatic('How to help', `
+    <ul>
+      <li><strong>제보하기:</strong> 상단 <em>Submit</em>으로 이슈를 보내주세요(출처 필수).</li>
+      <li><strong>팔로우:</strong> 관심 이슈만 모아 보고 주기적으로 확인하세요.</li>
+      <li><strong>연결하기:</strong> 관련 단체/자료/캠페인 링크를 함께 남겨 주세요.</li>
+    </ul>
+  `);
+});
 
 dialogCloseEl.addEventListener('click', ()=>{
   dialogEl.close();
