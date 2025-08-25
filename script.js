@@ -28,6 +28,7 @@ function getPreferredLang(){
   if (nav.startsWith('ja')) return 'ja';
   return 'en';
 }
+function normalizeLang(v){ return v === 'jp' ? 'ja' : v; }
 
 async function load(){
   const uiLang = localStorage.getItem('the-eye:lang') || 'auto';
@@ -41,14 +42,14 @@ async function load(){
     if(!res.ok) throw new Error('not found');
     DATA = await res.json();
   }catch(e){
-    // 폴백: 한국어 원본
     const res = await fetch('issues.ko.json', {cache:'no-store'});
     DATA = await res.json();
     lang = 'ko';
   }
 
-  renderTags();
+  renderTags();       // ← 데이터가 채워진 뒤 렌더
   render();
+  openFromHashOnce(); // ← 여기서 해시 열기(데이터 준비 완료 시점)
 }
 
 langSelect?.addEventListener('change', ()=>{
@@ -126,6 +127,7 @@ function toCardHTML(i){
       <div class="actions">
         <button class="btn details">Details</button>
         <button class="btn follow" aria-pressed="${isFollowed}">${isFollowed ? 'Following' : 'Follow'}</button>
+        <button class="btn copylink" data-id="${i.id}">Copy link</button>
         ${i.share !== false ? `<a class="btn" href="${shareURL(i)}" target="_blank" rel="noopener">Share</a>` : ''}
       </div>
     </article>
@@ -145,6 +147,16 @@ function attachCardEvents(){
       toggleFollow(id, e.target);
     });
   });
+    // Copy link
+  document.querySelectorAll('.card .copylink').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const id = e.target.closest('.card').dataset.id;
+      const url = `${location.origin}${location.pathname}#${id}`;
+      navigator.clipboard?.writeText(url);
+      e.target.textContent = 'Copied!';
+      setTimeout(()=> e.target.textContent = 'Copy link', 1200);
+    });
+  });
 }
 
 function toggleFollow(id, btn){
@@ -156,6 +168,7 @@ function toggleFollow(id, btn){
 
 function openDialog(id){
   const i = DATA.find(x => x.id === id);
+  history.replaceState(null, '', `${location.pathname}${location.search}#${id}`);
   if(!i) return;
   dialogContentEl.innerHTML = `
     <h3>${escapeHTML(i.title)}</h3>
@@ -176,7 +189,11 @@ function openDialog(id){
   dialogEl.showModal();
 }
 
-dialogCloseEl.addEventListener('click', ()=> dialogEl.close());
+dialogCloseEl.addEventListener('click', ()=>{
+  dialogEl.close();
+  history.replaceState(null, '', location.pathname + location.search); // 해시 제거
+});
+
 dialogEl.addEventListener('click', (e)=>{
   const rect = dialogEl.getBoundingClientRect();
   const inDialog = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
@@ -193,6 +210,15 @@ function escapeHTML(str=''){
   return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
 }
 function escapeAttr(str=''){ return escapeHTML(str).replace(/"/g, '&quot;'); }
+window.addEventListener('hashchange', ()=>{
+  const id = location.hash.slice(1);
+  if (id) openDialog(id);
+});
+
+function openFromHashOnce(){
+  const id = location.hash.slice(1);
+  if (id) setTimeout(()=>openDialog(id), 0); // 데이터 로드 직후 열기
+}
 
 /* ---- Events ---- */
 searchEl.addEventListener('input', render);
