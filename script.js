@@ -31,10 +31,17 @@ function getPreferredLang(){
 function normalizeLang(v){ return v === 'jp' ? 'ja' : v; }
 
 async function load(){
-  const uiLang = localStorage.getItem('the-eye:lang') || 'auto';
+  // 기존: const uiLang = localStorage.getItem('the-eye:lang') || 'auto';
+  const uiLangRaw = localStorage.getItem('the-eye:lang') || 'auto';
+  const uiLang = normalizeLang(uiLangRaw);            // ← 'jp' → 'ja' 보정
+  if (uiLangRaw !== uiLang) {
+    localStorage.setItem('the-eye:lang', uiLang);     // ← 저장된 값도 정정
+  }
   if (langSelect) langSelect.value = uiLang;
 
+  // 기존: let lang = uiLang === 'auto' ? getPreferredLang() : uiLang;
   let lang = uiLang === 'auto' ? getPreferredLang() : uiLang;
+  lang = normalizeLang(lang);                         // ← 로드 대상 언어도 보정
   let url = `issues.${lang}.json`;
 
   try{
@@ -168,8 +175,8 @@ function toggleFollow(id, btn){
 
 function openDialog(id){
   const i = DATA.find(x => x.id === id);
-  history.replaceState(null, '', `${location.pathname}${location.search}#${id}`);
   if(!i) return;
+  history.replaceState(null, '', `${location.pathname}${location.search}#${id}`);
   dialogContentEl.innerHTML = `
     <h3>${escapeHTML(i.title)}</h3>
     <div class="dialog-body">
