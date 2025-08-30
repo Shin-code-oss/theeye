@@ -135,26 +135,30 @@ button[aria-pressed="true"]{ background: var(--fg); color: var(--bg); }
   .site-header{ display:flex; align-items: center; justify-content: space-between; }
   nav{ margin-top: 0; }
 }
-/* ensure dialogs show when open */
+/* ---- Dialogs (consolidated) ---- */
 dialog::backdrop { background: rgba(0,0,0,0.6); }
-.dialog { 
-  border: 1px solid #444; border-radius: 12px; 
-  background: #111; color: #eee; 
-  padding: 0; max-width: 720px; width: min(90vw, 720px);
-  z-index: 9999;
+
+.dialog{
+  width: min(720px, 95vw);
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0 0 16px 0;
+  z-index: 9999; /* 모달이 항상 위에 오도록 */
 }
-/* 혹시 .dialog {display:none} 같은 규칙이 있어도, open 상태에서는 보이도록 */
-.dialog[open] { display: block !important; }
 
-/* card actions are visible & aligned */
-.card .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.btn { border: 1px solid #777; background: #000; color: #eee; padding: 6px 10px; }
-.btn[aria-pressed="true"] { outline: 1px dashed #aaa; }
+/* open 상태 강제 표시 (일부 리셋 CSS 대비) */
+.dialog[open]{ display: block !important; }
 
-dialog::backdrop { background: rgba(0,0,0,0.6); }
-.dialog { border: 1px solid #444; border-radius: 12px; background: #111; color: #eee; padding: 0; max-width: 720px; width: min(90vw,720px); }
-.dialog[open] { display: block !important; }
-.dialog-body { padding: 16px; display: grid; gap: 10px; }
-.dialog-body label { display: grid; gap: 6px; }
-.dialog-body input, .dialog-body textarea { background:#000; color:#eee; border:1px solid #444; padding:8px; }
-.btn.small { padding:4px 8px; font-size:12px; }
+/* 모달 내부 레이아웃 */
+.dialog .dialog-body{ padding:16px; display:grid; gap:10px; }
+.dialog .dialog-body label{ display:grid; gap:6px; }
+
+/* 카드 하단 버튼 줄: 아래로 밀고, 줄바꿈 허용 */
+.card .actions{
+  display:flex; gap:8px; flex-wrap:wrap; margin-top:auto;
+}
+
+/* 작은 버튼 */
+.btn.small{ padding:4px 8px; font-size:12px; }
