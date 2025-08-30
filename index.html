@@ -6,6 +6,7 @@
   <title>The Eye — Never Forget</title>
   <meta name="description" content="The Eye keeps social issues in focus until they're resolved." />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header class="site-header">
@@ -23,6 +24,7 @@
     <option value="en">English</option>
     <option value="ja">日本語</option>
   </select>
+  <button id="authBtn" class="btn small">Sign in</button>
 </nav>
   </header>
 
@@ -70,5 +72,40 @@
   </dialog>
 
   <script src="script.js?v=5"></script>
+  <!-- Submit dialog -->
+<dialog id="submitDialog" class="dialog">
+  <button class="dialog-close" aria-label="Close" id="submitClose">×</button>
+  <form id="submitForm" class="dialog-body">
+    <h3 style="margin-top:0">Submit an issue</h3>
+    <label>Title<input id="subTitle" required /></label>
+    <label>Summary<textarea id="subSummary" rows="3"></textarea></label>
+    <label>Details<textarea id="subDetails" rows="6"></textarea></label>
+    <label>Tags (comma-separated)<input id="subTags" placeholder="예: 노동, 안전" /></label>
+    <label>Region<input id="subRegion" placeholder="KR" /></label>
+    <label>Priority (0~5)<input id="subPriority" type="number" min="0" max="5" value="0" /></label>
+    <fieldset>
+      <legend>Source (optional)</legend>
+      <label>Title<input id="subSourceTitle" /></label>
+      <label>URL<input id="subSourceUrl" type="url" placeholder="https://..." /></label>
+    </fieldset>
+    <p style="font-size:12px;opacity:.75">제출 즉시 공개되지 않습니다. 운영자 승인 후 노출됩니다.</p>
+    <button class="btn" type="submit">Submit</button>
+  </form>
+</dialog>
+
+<!-- Login dialog -->
+<dialog id="loginDialog" class="dialog">
+  <button class="dialog-close" aria-label="Close" id="loginClose">×</button>
+  <form id="loginForm" class="dialog-body">
+    <h3 style="margin-top:0">Sign in</h3>
+    <label>Email<input id="loginEmail" type="email" required /></label>
+    <label>Password<input id="loginPassword" type="password" required /></label>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn" type="submit">Sign in</button>
+      <button class="btn" type="button" id="goSignup">Create account</button>
+    </div>
+  </form>
+</dialog>
+  <script src="script.js?v=7"></script>
 </body>
 </html>
