@@ -108,7 +108,42 @@ async function load(){
   renderTags();
   render();
   openFromHashOnce();
+  await loadApprovedSubmissions();   // ← 이 줄 추가 (데이터 로드 후)
 } // load 끝
+
+async function loadApprovedSubmissions(){
+  // approved=true & 현재 언어만 로드
+  const { data, error } = await sb
+    .from('submissions')
+    .select('id, created_at, title, summary, details, tags, region, priority, status, sources, lang')
+    .eq('approved', true)
+    .eq('lang', CURRENT_LANG);
+
+  if (error) {
+    console.warn('loadApprovedSubmissions error:', error.message);
+    return;
+  }
+
+  // DB행을 화면 카드 스키마로 매핑
+  const extra = (data || []).map(r => ({
+    id: `sub_${r.id}`,                // 충돌 피하기 위해 접두사
+    title: r.title,
+    summary: r.summary || '',
+    details: r.details || '',
+    tags: Array.isArray(r.tags) ? r.tags : [],
+    region: r.region || '',
+    priority: Number.isFinite(r.priority) ? r.priority : 0,
+    status: r.status || 'unresolved',
+    sources: r.sources || [],
+    updated: (r.created_at || '').slice(0, 10),
+    share: true
+  }));
+
+  // 기존 정적 DATA와 합치고 렌더 갱신
+  DATA = DATA.concat(extra);
+  renderTags();
+  render();
+}
 
 /* ---- Auth helpers (전역) ---- */
 async function refreshAuth(){
