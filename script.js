@@ -16,6 +16,27 @@ const staticDialog = document.getElementById('staticDialog');
 const staticContent = document.getElementById('staticContent');
 const staticClose = document.getElementById('staticClose');
 
+/* ---- Supabase Auth/DB ---- */
+const SUPABASE_URL = 'https://qiimjthkrrfxbjdeoopo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpaW1qdGhrcnJmeGJqZGVvb3BvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1Njc3ODgsImV4cCI6MjA3MjE0Mzc4OH0.mcZ96mSOP1aKFcLPJiWNrzsxeOa0sKwSvGu3TPqKb2Y';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+sb.auth.onAuthStateChange(() => refreshAuth()); // 전역 1회 등록
+
+const authBtn = document.getElementById('authBtn');
+const submitLink = document.getElementById('submitLink');
+
+const submitDialog = document.getElementById('submitDialog');
+const submitClose = document.getElementById('submitClose');
+const submitForm = document.getElementById('submitForm');
+
+const loginDialog = document.getElementById('loginDialog');
+const loginClose = document.getElementById('loginClose');
+const loginForm = document.getElementById('loginForm');
+const goSignup = document.getElementById('goSignup');
+
+let CURRENT_LANG = 'ko';
+let CURRENT_USER = null;
+
 document.getElementById('year').textContent = new Date().getFullYear();
 
 /* ---- State ---- */
@@ -68,6 +89,7 @@ async function load(){
   let lang = uiLang === 'auto' ? getPreferredLang() : uiLang;
   lang = normalizeLang(lang);
   let url = `issues.${lang}.json`;
+  CURRENT_LANG = lang;
 
   try{
     const res = await fetch(url, { cache:'no-store' });
@@ -77,14 +99,27 @@ async function load(){
     const res = await fetch('issues.ko.json', { cache:'no-store' });
     DATA = await res.json();
     lang = 'ko';
+    CURRENT_LANG = 'ko';
+    if (langSelect) langSelect.value = 'ko';
   }
 
   // URL의 필터 상태를 먼저 UI에 반영 → 렌더
   parseStateFromURL();
   renderTags();
   render();
-  openFromHashOnce(); // 해시(#id)로 진입 시 모달 자동 오픈
+  openFromHashOnce();
+} // load 끝
+
+/* ---- Auth helpers (전역) ---- */
+async function refreshAuth(){
+  const { data: { user } } = await sb.auth.getUser();
+  CURRENT_USER = user;
+  if (authBtn) authBtn.textContent = user ? 'Sign out' : 'Sign in';
 }
+function openLogin(){ loginDialog?.showModal(); }
+function closeLogin(){ loginDialog?.close(); }
+function openSubmit(){ submitDialog?.showModal(); }
+function closeSubmit(){ submitDialog?.close(); }
 
 langSelect?.addEventListener('change', ()=>{
   localStorage.setItem('the-eye:lang', langSelect.value);
@@ -141,7 +176,7 @@ function render(){
 
   listEl.innerHTML = items.map(toCardHTML).join('');
   attachCardEvents();
-  syncURL(); // 상태 → URL 반영
+  syncURL();
 }
 
 function toCardHTML(i){
@@ -185,9 +220,15 @@ function attachCardEvents(){
     btn.addEventListener('click', (e)=>{
       const id = e.target.closest('.card').dataset.id;
       const url = `${location.origin}${location.pathname}#${id}`;
-      navigator.clipboard?.writeText(url);
-      e.target.textContent = 'Copied!';
-      setTimeout(()=> e.target.textContent = 'Copy link', 1200);
+      (async ()=>{
+        try{
+          await navigator.clipboard.writeText(url);
+          e.target.textContent = 'Copied!';
+        }catch(_){
+          window.prompt('Copy this link', url);
+        }
+        setTimeout(()=> e.target.textContent = 'Copy link', 1200);
+      })();
     });
   });
 }
@@ -225,7 +266,7 @@ function openDialog(id){
 
 dialogCloseEl.addEventListener('click', ()=>{
   dialogEl.close();
-  history.replaceState(null, '', location.pathname + location.search); // 해시 제거
+  history.replaceState(null, '', location.pathname + location.search);
 });
 dialogEl.addEventListener('click', (e)=>{
   const rect = dialogEl.getBoundingClientRect();
@@ -265,6 +306,18 @@ howToHelpLink?.addEventListener('click', (e)=>{
   `);
 });
 
+/* ---- Submit/Login dialogs: backdrop click to close ---- */
+submitDialog?.addEventListener('click', (e)=>{
+  const r = submitDialog.getBoundingClientRect();
+  const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+  if(!inside) closeSubmit();
+});
+loginDialog?.addEventListener('click', (e)=>{
+  const r = loginDialog.getBoundingClientRect();
+  const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+  if(!inside) closeLogin();
+});
+
 /* ---- Sharing helpers ---- */
 function shareURL(i){
   const url = typeof window !== 'undefined' ? window.location.href.split('#')[0] : '';
@@ -291,5 +344,82 @@ searchEl.addEventListener('input', render);
 showFollowedEl.addEventListener('change', render);
 sortByEl.addEventListener('change', render);
 
+// Auth 버튼: 로그인/로그아웃 토글
+authBtn?.addEventListener('click', async ()=>{
+  if (CURRENT_USER){
+    await sb.auth.signOut();
+    CURRENT_USER = null;
+    authBtn.textContent = 'Sign in';
+  } else {
+    openLogin();
+  }
+});
+
+// Submit 링크: 로그인 필요 → 로그인 안 되어 있으면 로그인 모달
+submitLink?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  if (!CURRENT_USER) return openLogin();
+  openSubmit();
+});
+
+// Login
+loginClose?.addEventListener('click', closeLogin);
+loginForm?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { alert('Sign in failed: ' + error.message); return; }
+  // onAuthStateChange에서 refreshAuth 호출됨
+  closeLogin();
+  openSubmit();
+});
+
+// Signup
+goSignup?.addEventListener('click', async ()=>{
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) return alert('Enter email & password first.');
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) { alert('Sign up failed: ' + error.message); return; }
+  alert('Check your inbox to verify your email.');
+});
+
+// Submit
+submitClose?.addEventListener('click', closeSubmit);
+submitForm?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if (!CURRENT_USER) { openLogin(); return; }
+
+  const title = document.getElementById('subTitle').value.trim();
+  const summary = document.getElementById('subSummary').value.trim();
+  const details = document.getElementById('subDetails').value.trim();
+  const tagsStr = document.getElementById('subTags').value.trim();
+  const region = document.getElementById('subRegion').value.trim();
+  const priority = parseInt(document.getElementById('subPriority').value || '0', 10);
+  const srcTitle = document.getElementById('subSourceTitle').value.trim();
+  const srcUrl = document.getElementById('subSourceUrl').value.trim();
+
+  const tags = tagsStr ? tagsStr.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const sources = srcUrl ? [{ title: srcTitle || srcUrl, url: srcUrl }] : [];
+
+  const payload = {
+    created_by: CURRENT_USER.id,
+    lang: CURRENT_LANG || 'ko',
+    title, summary, details, tags, region, priority,
+    status: 'unresolved',
+    sources,
+    approved: false
+  };
+
+  const { error } = await sb.from('submissions').insert(payload);
+  if (error) { alert('Submit failed: ' + error.message); return; }
+
+  alert('제출 완료! 운영자 승인 후 공개됩니다.');
+  submitForm.reset();
+  closeSubmit();
+});
+
 /* ---- Kickoff ---- */
+refreshAuth();
 load();
