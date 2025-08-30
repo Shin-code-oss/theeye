@@ -103,46 +103,55 @@ async function load(){
     if (langSelect) langSelect.value = 'ko';
   }
 
-  // URL의 필터 상태를 먼저 UI에 반영 → 렌더
+  // URL의 필터 상태를 먼저 UI에 반영 → 1차 렌더
   parseStateFromURL();
   renderTags();
   render();
+
+  // 승인된 DB 제보를 합쳐서 2차 렌더
+  await loadApprovedSubmissions();
+
+  // 해시로 진입 시(딥링크) 모달 열기
   openFromHashOnce();
-  await loadApprovedSubmissions();   // ← 이 줄 추가 (데이터 로드 후)
 } // load 끝
 
+/* ---- 승인된 제보 불러오기(DB → 화면 합치기) ---- */
 async function loadApprovedSubmissions(){
-  // approved=true & 현재 언어만 로드
-  const { data, error } = await sb
-    .from('submissions')
-    .select('id, created_at, title, summary, details, tags, region, priority, status, sources, lang')
-    .eq('approved', true)
-    .eq('lang', CURRENT_LANG);
+  try{
+    const { data, error } = await sb
+      .from('submissions')
+      .select('id, created_at, title, summary, details, tags, region, priority, status, sources, lang')
+      .eq('approved', true)
+      .eq('lang', CURRENT_LANG);
 
-  if (error) {
-    console.warn('loadApprovedSubmissions error:', error.message);
-    return;
+    if (error) {
+      console.warn('loadApprovedSubmissions error:', error.message);
+      return;
+    }
+
+    const extra = (data || []).map(r => ({
+      id: `sub_${r.id}`, // 충돌 방지
+      title: r.title,
+      summary: r.summary || '',
+      details: r.details || '',
+      tags: Array.isArray(r.tags) ? r.tags : [],
+      region: r.region || '',
+      priority: Number.isFinite(r.priority) ? r.priority : 0,
+      status: r.status || 'unresolved',
+      sources: r.sources || [],
+      updated: (r.created_at || '').slice(0,10),
+      share: true
+    }));
+
+    if (extra.length){
+      const ids = new Set(DATA.map(i=>i.id));
+      DATA = DATA.concat(extra.filter(i=>!ids.has(i.id)));
+      renderTags();
+      render();
+    }
+  }catch(err){
+    console.warn('loadApprovedSubmissions ex:', err);
   }
-
-  // DB행을 화면 카드 스키마로 매핑
-  const extra = (data || []).map(r => ({
-    id: `sub_${r.id}`,                // 충돌 피하기 위해 접두사
-    title: r.title,
-    summary: r.summary || '',
-    details: r.details || '',
-    tags: Array.isArray(r.tags) ? r.tags : [],
-    region: r.region || '',
-    priority: Number.isFinite(r.priority) ? r.priority : 0,
-    status: r.status || 'unresolved',
-    sources: r.sources || [],
-    updated: (r.created_at || '').slice(0, 10),
-    share: true
-  }));
-
-  // 기존 정적 DATA와 합치고 렌더 갱신
-  DATA = DATA.concat(extra);
-  renderTags();
-  render();
 }
 
 /* ---- Auth helpers (전역) ---- */
